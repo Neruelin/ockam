@@ -168,48 +168,17 @@ async fn delete_secure_channel<'a>(
     Ok(())
 }
 
-pub async fn check_project_readiness(
+pub async fn establish_connections(
     ctx: &ockam::Context,
     opts: &CommandGlobalOpts,
-    cloud_opts: &CloudOpts,
     api_node: &str,
     tcp: Option<&TcpTransport>,
-    mut project: Project,
+    project: Project,
 ) -> Result<Project> {
     // Total of 10 Mins sleep strategy with 5 second intervals between each retry
     let total_sleep_time_ms = 10 * 60 * 1000;
     let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
-
-    // Persist project config prior to checking readiness which might take a while
-    config::set_project_id(&opts.config, &project).await?;
     let spinner_option = opts.terminal.progress_spinner();
-    if let Some(spinner) = spinner_option.as_ref() {
-        spinner.set_message("Waiting for project to be ready...");
-    }
-
-    // Check if Project and Project Authority info is available
-    if !project.is_ready() {
-        let cloud_route = &cloud_opts.route();
-        let project_id = project.id.clone();
-        project = Retry::spawn(retry_strategy.clone(), || async {
-            let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
-
-            // Handle the project show request result
-            // so we can provide better errors in the case orchestrator does not respond timely
-            if rpc
-                .request(api::project::show(&project_id, cloud_route))
-                .await
-                .is_ok()
-            {
-                let p = rpc.parse_response::<Project>()?;
-                if p.is_ready() {
-                    return Ok(p.to_owned());
-                }
-            }
-            Err(anyhow!("Project creation timed out. Plaese try again."))
-        })
-        .await?;
-    }
 
     {
         if let Some(spinner) = spinner_option.as_ref() {
@@ -299,6 +268,58 @@ pub async fn check_project_readiness(
     if let Some(spinner) = spinner_option.as_ref() {
         spinner.finish_and_clear();
     }
+
+    Ok(project)
+}
+
+pub async fn check_project_readiness(
+    ctx: &ockam::Context,
+    opts: &CommandGlobalOpts,
+    cloud_opts: &CloudOpts,
+    api_node: &str,
+    tcp: Option<&TcpTransport>,
+    mut project: Project,
+) -> Result<Project> {
+    // Total of 10 Mins sleep strategy with 5 second intervals between each retry
+    let total_sleep_time_ms = 10 * 60 * 1000;
+    let retry_strategy = FixedInterval::from_millis(5000).take(total_sleep_time_ms / 5000);
+
+    // Persist project config prior to checking readiness which might take a while
+    config::set_project_id(&opts.config, &project).await?;
+    let spinner_option = opts.terminal.progress_spinner();
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.set_message("Waiting for project to be ready...");
+    }
+
+    // Check if Project and Project Authority info is available
+    if !project.is_ready() {
+        let cloud_route = &cloud_opts.route();
+        let project_id = project.id.clone();
+        project = Retry::spawn(retry_strategy.clone(), || async {
+            let mut rpc = RpcBuilder::new(ctx, opts, api_node).build();
+
+            // Handle the project show request result
+            // so we can provide better errors in the case orchestrator does not respond timely
+            if rpc
+                .request(api::project::show(&project_id, cloud_route))
+                .await
+                .is_ok()
+            {
+                let p = rpc.parse_response::<Project>()?;
+                if p.is_ready() {
+                    return Ok(p.to_owned());
+                }
+            }
+            Err(anyhow!("Project creation timed out. Plaese try again."))
+        })
+        .await?;
+    }
+
+    if let Some(spinner) = spinner_option.as_ref() {
+        spinner.finish_and_clear();
+    }
+
+    let project = establish_connections(ctx, opts, api_node, tcp, project).await?;
 
     // Persist project config with all its fields
     config::set_project(&opts.config, &project).await?;

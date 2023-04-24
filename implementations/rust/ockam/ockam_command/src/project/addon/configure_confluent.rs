@@ -4,15 +4,17 @@ use clap::Args;
 
 use ockam::Context;
 use ockam_api::cloud::addon::ConfluentConfig;
+use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::Project;
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
-use crate::project::addon::base_endpoint;
+use crate::operation::util::check_for_completion;
+use crate::project::addon::configure_addon_endpoint;
 use crate::project::config;
-use crate::project::util::check_project_readiness;
+use crate::project::util::establish_connections;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, node_rpc, Rpc};
@@ -73,21 +75,21 @@ async fn run_impl(
     let addon_id = "confluent";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.config.lookup(), &project_name)?,
+        configure_addon_endpoint(&opts.config.lookup(), &project_name)?,
         addon_id
     );
-    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
         body,
         controller_route,
         None::<CowStr>,
     ));
     rpc.request(req).await?;
-    rpc.is_ok()?;
+    let res = rpc.parse_response::<CreateOperationResponse>()?;
+    let operation_id = res.operation_id;
+
     println!("Confluent addon enabled");
 
-    // Wait until project is ready again
-    println!("Reconfiguring project (this can take a few minutes) ...");
-    tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+    check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
 
     let project_id =
         config::get_project(&opts.config, &project_name).context("project not found in lookup")?;
@@ -95,8 +97,13 @@ async fn run_impl(
     rpc.request(api::project::show(&project_id, controller_route))
         .await?;
     let project: Project = rpc.parse_response()?;
-    check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
+    let project = establish_connections(&ctx, &opts, rpc.node_name(), None, project).await?;
+
+    // Persist project config with all its fields
+    config::set_project(&opts.config, &project).await?;
+
     println!("Confluent addon configured successfully");
+
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
 }

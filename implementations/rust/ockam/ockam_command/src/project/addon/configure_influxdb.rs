@@ -6,15 +6,17 @@ use clap::Args;
 
 use ockam::Context;
 
+use ockam_api::cloud::operation::CreateOperationResponse;
 use ockam_api::cloud::project::{InfluxDBTokenLeaseManagerConfig, Project};
 use ockam_api::cloud::CloudRequestWrapper;
 use ockam_core::api::Request;
 use ockam_core::CowStr;
 
 use crate::node::util::delete_embedded_node;
-use crate::project::addon::base_endpoint;
+use crate::operation::util::check_for_completion;
+use crate::project::addon::configure_addon_endpoint;
 use crate::project::config;
-use crate::project::util::check_project_readiness;
+use crate::project::util::establish_connections;
 use crate::util::api::CloudOpts;
 
 use crate::util::{api, exitcode, node_rpc, Rpc};
@@ -172,41 +174,35 @@ async fn run_impl(
     let add_on_id = "influxdb_token_lease_manager";
     let endpoint = format!(
         "{}/{}",
-        base_endpoint(&opts.config.lookup(), &project_name)?,
+        configure_addon_endpoint(&opts.config.lookup(), &project_name)?,
         add_on_id
     );
-    let req = Request::put(endpoint).body(CloudRequestWrapper::new(
+    let req = Request::post(endpoint).body(CloudRequestWrapper::new(
         body,
         controller_route,
         None::<CowStr>,
     ));
 
     rpc.request(req).await?;
-    rpc.is_ok()?;
+    let res = rpc.parse_response::<CreateOperationResponse>()?;
+    let operation_id = res.operation_id;
+
     println!("InfluxDB addon enabled");
 
     // Wait until project is ready again
-    println!("Reconfiguring project (this can take a few minutes) ...");
-    tokio::time::sleep(std::time::Duration::from_secs(45)).await;
+    check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
 
     let project_id =
         config::get_project(&opts.config, &project_name).context("project not found in lookup")?;
+    let mut rpc = rpc.clone();
+    rpc.request(api::project::show(&project_id, controller_route))
+        .await?;
+    let project: Project = rpc.parse_response()?;
+    let project = establish_connections(&ctx, &opts, rpc.node_name(), None, project).await?;
 
-    // Give the sever ~20 seconds
-    // in intervals of 5s for the project to be available.
-    for _ in 0..4 {
-        rpc.request(api::project::show(&project_id, controller_route))
-            .await?;
-        let project: Project = match rpc.parse_response() {
-            Ok(p) => p,
-            Err(_) => {
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                continue;
-            }
-        };
+    // Persist project config with all its fields
+    config::set_project(&opts.config, &project).await?;
 
-        check_project_readiness(&ctx, &opts, &cloud_opts, rpc.node_name(), None, project).await?;
-    }
     println!("InfluxDB addon configured successfully");
     delete_embedded_node(&opts, rpc.node_name()).await;
     Ok(())
