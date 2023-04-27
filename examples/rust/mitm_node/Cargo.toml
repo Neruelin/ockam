@@ -1,0 +1,31 @@
+[package]
+name = "mitm_node"
+version = "0.1.0"
+authors = ["Ockam Developers"]
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+rust-version = "1.56.0"
+
+[[bin]]
+name = "tcp_mitm"
+
+[lib]
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+cfg-if = "1.0.0"
+ockam = { path = "../../../implementations/rust/ockam/ockam" }
+ockam_core = { path = "../../../implementations/rust/ockam/ockam_core" }
+ockam_macros = { path = "../../../implementations/rust/ockam/ockam_macros" }
+ockam_node = { path = "../../../implementations/rust/ockam/ockam_node" }
+ockam_transport_core = { path = "../../../implementations/rust/ockam/ockam_transport_core" }
+ockam_transport_tcp = { path = "../../../implementations/rust/ockam/ockam_transport_tcp" }
+rand = "0.8"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+socket2 = { version = "0.5.2", features = ["all"] }
+tokio = { version = "1.27", features = ["rt-multi-thread", "sync", "net", "macros", "time", "io-util"] }
+tracing = { version = "0.1", default-features = false }

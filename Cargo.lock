@@ -2934,6 +2934,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "mitm_node"
+version = "0.1.0"
+dependencies = [
+ "cfg-if",
+ "ockam",
+ "ockam_core",
+ "ockam_macros",
+ "ockam_node",
+ "ockam_transport_core",
+ "ockam_transport_tcp",
+ "rand",
+ "serde",
+ "socket2 0.5.2",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "mockall"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
