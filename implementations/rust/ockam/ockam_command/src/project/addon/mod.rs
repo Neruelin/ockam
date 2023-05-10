@@ -117,3 +117,13 @@ pub fn configure_addon_endpoint(lookup: &ConfigLookup, project_name: &str) -> Re
         .id;
     Ok(format!("v1/projects/{project_id}/configure_addon"))
 }
+
+pub fn disable_addon_endpoint(lookup: &ConfigLookup, project_name: &str) -> Result<String> {
+    let project_id = &lookup
+        .get_project(project_name)
+        .context(format!(
+            "Failed to get project {project_name} from config lookup"
+        ))?
+        .id;
+    Ok(format!("v1/projects/{project_id}/disable_addon"))
+}
