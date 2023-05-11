@@ -132,10 +132,7 @@ async fn run_impl(
     let res = rpc.parse_response::<CreateOperationResponse>()?;
     let operation_id = res.operation_id;
 
-    println!("Okta addon enabled");
-
     check_for_completion(&ctx, &opts, &cloud_opts, rpc.node_name(), &operation_id).await?;
-    println!();
 
     let project_id =
         config::get_project(&opts.config, &project_name).context("project not found in lookup")?;
