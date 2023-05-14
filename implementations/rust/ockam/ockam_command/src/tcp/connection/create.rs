@@ -58,6 +58,7 @@ impl CreateCommand {
                     println!("\n  TCP Connection:");
                     println!("    From: /node/{from}");
                     println!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port());
+                    println!("    Address: {}", response.multiaddr()?);
                 } else {
                     println!("\n  TCP Connection:");
                     println!("{}", format!("    From: /node/{from}").light_magenta());
@@ -65,6 +66,10 @@ impl CreateCommand {
                         "{}",
                         format!("    To: {} (/ip4/{}/tcp/{})", to, to.ip(), to.port())
                             .light_magenta()
+                    );
+                    println!(
+                        "{}",
+                        format!("    Address: {}", response.multiaddr()?).light_magenta()
                     );
                 }
             }
