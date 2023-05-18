@@ -6,6 +6,8 @@ use ockam_core::flow_control::FlowControlId;
 #[cfg(feature = "tag")]
 use ockam_core::TypeTag;
 use ockam_core::{Error, Result};
+use ockam_multiaddr::proto::Worker;
+use ockam_multiaddr::MultiAddr;
 use std::net::SocketAddrV4;
 
 /// Response body when interacting with a transport
@@ -47,6 +49,13 @@ impl TransportStatus {
         self.socket_addr
             .parse::<SocketAddrV4>()
             .map_err(|err| Error::new(Origin::Transport, Kind::Invalid, err))
+    }
+
+    pub fn multiaddr(&self) -> Result<MultiAddr> {
+        let mut m = MultiAddr::default();
+        m.push_back(Worker::new(self.worker_addr.clone()))?;
+
+        Ok(m)
     }
 }
 
