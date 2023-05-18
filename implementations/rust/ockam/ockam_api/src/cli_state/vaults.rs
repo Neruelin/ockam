@@ -1,6 +1,6 @@
 use super::Result;
 use crate::cli_state::traits::StateItemTrait;
-use crate::cli_state::{CliStateError, StateDirTrait};
+use crate::cli_state::{CliStateError, StateDirTrait, DATA_DIR_NAME};
 use ockam_identity::IdentitiesVault;
 use ockam_vault::storage::FileStorage;
 use ockam_vault::Vault;
@@ -50,7 +50,7 @@ impl VaultState {
     fn build_data_path(name: &str, path: &Path) -> PathBuf {
         path.parent()
             .expect("Should have parent")
-            .join("data")
+            .join(DATA_DIR_NAME)
             .join(format!("{name}-storage.json"))
     }
 
