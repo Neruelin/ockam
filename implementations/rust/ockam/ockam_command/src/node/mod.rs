@@ -123,12 +123,18 @@ pub fn spawn_default_node(node_name: &str) -> String {
     create_command.run(quiet_opts);
 
     if let Ok(mut logs) = PARSER_LOGS.lock() {
-        logs.push(fmt_log!("No default node was found."));
         logs.push(fmt_log!(
-            "Created default node, {}",
+            "There is no node, on this machine, marked as your default."
+        ));
+        logs.push(fmt_log!("Creating a new Ockam node for you..."));
+        logs.push(fmt_log!(
+            "Created a new node named {}",
             node_name
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())
+        ));
+        logs.push(fmt_log!(
+            "Marked this node as your default, on this machine.\n"
         ));
     }
 

@@ -3,9 +3,9 @@ use crate::policy::{add_default_project_policy, has_policy};
 use crate::tcp::util::alias_parser;
 use crate::terminal::OckamColor;
 
-use crate::fmt_log;
 use crate::util::parsers::socket_addr_parser;
 use crate::util::{extract_address_value, node_rpc, Rpc};
+use crate::{display_parse_logs, fmt_log};
 use crate::{fmt_ok, CommandGlobalOpts};
 
 use clap::Args;
@@ -54,7 +54,14 @@ pub async fn run_impl(
     ctx: Context,
     (opts, cmd): (CommandGlobalOpts, CreateCommand),
 ) -> crate::Result<()> {
-    opts.terminal.write_line(&fmt_log!("Creating TCP Outlet"))?;
+    opts.terminal.write_line(&fmt_log!(
+        "Creating TCP Outlet to {}\n",
+        &cmd.to
+            .to_string()
+            .color(OckamColor::PrimaryResource.color())
+    ))?;
+
+    display_parse_logs(&opts);
     let node = extract_address_value(&cmd.at)?;
     let project = opts
         .state
@@ -111,8 +118,9 @@ pub async fn run_impl(
     opts.terminal
         .stdout()
         .plain(fmt_ok!(
-            "{} is now sending TCP traffic to {}",
+            "Created a new TCP Outlet on node {} from address /service/{} to {}",
             &node.to_string().color(OckamColor::PrimaryResource.color()),
+            extract_address_value(&cmd.from)?.color(OckamColor::PrimaryResource.color()),
             &cmd.to
                 .to_string()
                 .color(OckamColor::PrimaryResource.color())

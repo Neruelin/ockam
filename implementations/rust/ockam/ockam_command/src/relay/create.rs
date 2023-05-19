@@ -18,7 +18,7 @@ use crate::node::{default_node_name, node_name_parser};
 use crate::terminal::OckamColor;
 use crate::util::output::Output;
 use crate::util::{extract_address_value, node_rpc, process_nodes_multiaddr, RpcBuilder};
-use crate::{docs, fmt_ok, CommandGlobalOpts};
+use crate::{display_parse_logs, docs, fmt_ok, CommandGlobalOpts};
 use crate::{fmt_log, Result};
 
 const LONG_ABOUT: &str = include_str!("./static/create/long_about.txt");
@@ -71,7 +71,9 @@ pub fn default_forwarder_at() -> MultiAddr {
 }
 
 async fn rpc(ctx: Context, (opts, cmd): (CommandGlobalOpts, CreateCommand)) -> Result<()> {
-    opts.terminal.write_line(&fmt_log!("Creating Relay"))?;
+    opts.terminal.write_line(&fmt_log!("Creating Relay...\n"))?;
+
+    display_parse_logs(&opts);
 
     let tcp = TcpTransport::create(&ctx).await?;
     let api_node = extract_address_value(&cmd.to)?;

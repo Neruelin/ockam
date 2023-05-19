@@ -8,7 +8,7 @@ use colorful::Colorful;
 pub(crate) use create::CreateCommand;
 pub(crate) use delete::DeleteCommand;
 pub(crate) use list::ListCommand;
-use ockam_api::cli_state::CliState;
+use ockam_api::cli_state::{CliState, StateItemTrait};
 pub(crate) use show::ShowCommand;
 
 use crate::terminal::OckamColor;
@@ -98,21 +98,24 @@ pub fn create_default_identity(identity_name: &str) -> String {
     );
 
     let create_command = CreateCommand::new(identity_name.into(), None);
-    create_command.run(quiet_opts);
+    create_command.run(quiet_opts.clone());
+
+    let identity_or_name = match quiet_opts.state.identities.get(identity_name) {
+        Ok(identity_state) => identity_state.config().identity().identifier().to_string(),
+        Err(_) => identity_name.to_string(),
+    };
 
     if let Ok(mut logs) = PARSER_LOGS.lock() {
-        logs.push(fmt_log!("No default identity was found."));
+        logs.push(fmt_log!(
+            "There is no identity, on this machine, marked as your default."
+        ));
+        logs.push(fmt_log!("Creating a new Ockam identity for you..."));
         logs.push(fmt_ok!(
-            "Creating default identity {}",
-            identity_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            "Created identity {}",
+            identity_or_name.color(OckamColor::PrimaryResource.color())
         ));
         logs.push(fmt_log!(
-            "Setting identity {} as default for local operations...\n",
-            identity_name
-                .to_string()
-                .color(OckamColor::PrimaryResource.color())
+            "Marked this new identity as your default, on this machine.\n"
         ));
     }
 
